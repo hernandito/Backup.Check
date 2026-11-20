@@ -1,0 +1,1 @@
+Monthly: a dated, compressed dump of all MariaDB databases on the cachebackup pool (mysql/monthly-archives), the last 12 kept.

@@ -1,0 +1,32 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - MySQL - Database Dump - Cachebackup - Weekly
+#
+#  What:   every database in the mariadb container
+#  Type:   Database Dump - a plain .sql file any MariaDB/MySQL can load
+#  To:     the cachebackup pool, the same file Backup MySQL Weekly has always written,
+#          plus 4 dated, compressed copies (one per week).
+#  When:   weekly (Sunday)
+#
+#  Replaces the dump step of "Backup MySQL Weekly", which emptied the .sql file before
+#  dumping (a failed dump left no copy). This one never replaces a good dump with a bad one.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+CONTAINER="mariadb"
+DB_USER="root"
+DB_PASS="__MARIADB_PASSWORD__"          # filled in when the script is installed (never stored in the git repo)
+
+DIR="/mnt/cachebackup/backups/mysql/weekly"
+STAMP_FILE="/mnt/cachebackup/backups/mysql/mysql-weekly_backup.log"   # the old completion stamp, kept up to date
+KEEP_DATED=4
+
+backup_start "mysql-dump-cachebackup-weekly" "MySQL - Database Dump - Cachebackup - Weekly"
+backup_need_mounted "/mnt/cachebackup/backups/mysql"
+[ "$DB_PASS" = "__MARIADB_PASSWORD__" ] && backup_abort "The database password has not been filled in (this is the repo copy of the script)."
+
+if backup_mysqldump "$CONTAINER" "$DB_USER" "$DB_PASS" "$DIR/all-databases-weekly.sql" "$DIR/all-databases-weekly-$(date +%Y-%m-%d).sql.gz"; then
+  [ ${#BACKUP_WARNINGS[@]} -eq 0 ] && date > "$STAMP_FILE"
+fi
+backup_prune "$DIR" "all-databases-weekly-20??-??-??.sql.gz" "$KEEP_DATED"
+backup_finish

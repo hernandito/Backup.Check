@@ -1,0 +1,30 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Appdata - Exact Mirror - Cachebackup - Weekly
+#
+#  What:   all of appdata
+#  Type:   Exact Mirror - the backup becomes an exact copy of appdata as it is on Sunday,
+#          so files deleted on the server are removed here too. A clean "as of last Sunday"
+#          copy without old leftovers. (The daily No Deletes copies keep everything ever deleted.)
+#  To:     the cachebackup pool, the same folder Backup Appdata - Weekly has always used.
+#  When:   weekly (Sunday)
+#
+#  Replaces the appdata step of "Backup Appdata - Weekly". Like the old script, it copies
+#  everything (no Plex exclusions), and it refuses to run if appdata is missing or empty:
+#  a mirror of an empty source would wipe the backup.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/cache/appdata/"
+DEST="/mnt/cachebackup/backups/appdata/weekly/"
+STAMP_FILE="/mnt/cachebackup/backups/appdata/appdata-weekly_backup.log"   # the old completion stamp, kept up to date
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "appdata-mirror-cachebackup-weekly" "Appdata - Exact Mirror - Cachebackup - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/cachebackup/backups/appdata"
+
+backup_mirror "Appdata" "$SOURCE" "$DEST" "${OPTS[@]}"
+[ ${#BACKUP_ERRORS[@]} -eq 0 ] && [ "$BACKUP_DRY_RUN" != 1 ] && date > "$STAMP_FILE"
+backup_finish

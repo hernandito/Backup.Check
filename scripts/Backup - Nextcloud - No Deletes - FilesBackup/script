@@ -1,0 +1,32 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Nextcloud - No Deletes - FilesBackup
+#
+#  What:   everyone's Nextcloud files (/mnt/user/Nextcloud)
+#  Type:   No Deletes - new and changed files are copied; nothing is ever removed, so a
+#          file deleted from Nextcloud stays in the backup forever.
+#  Guard:  Tripwire - if more than TRIPWIRE_MAX existing files would change in one night
+#          (normal is 1-2), nothing is copied and you get an alert. That is what ransomware
+#          or a bad sync looks like, and it stops the damage reaching the backup.
+#  To:     FilesBackup (NTFS, readable on Windows), the same folder "Backup Nextcloud" used.
+#  When:   daily
+#
+#  Replaces "Backup Nextcloud". Like it, Nextcloud's own trash and version folders are
+#  skipped (Nextcloud expires those itself).
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/user/Nextcloud/"
+DEST="/mnt/disks/FilesBackup/Nextcloud/"
+TRIPWIRE_MAX=100          # raise for one run if you deliberately change many files
+
+OPTS=(--exclude='/*/files_trashbin/' --exclude='/*/files_versions/')
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "nextcloud-nodeletes-filesbackup" "Nextcloud - No Deletes - FilesBackup"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disks/FilesBackup"
+
+backup_tripwire ntfs "$SOURCE" "$DEST" "$TRIPWIRE_MAX" "${OPTS[@]}"
+backup_nodeletes_ntfs "Nextcloud" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish

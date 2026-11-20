@@ -1,0 +1,1 @@
+Weekly dump of all MariaDB databases to the cachebackup pool (mysql/weekly), plus 4 dated compressed copies. A failed or incomplete dump never replaces the last good one.

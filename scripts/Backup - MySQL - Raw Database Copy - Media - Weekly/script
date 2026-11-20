@@ -1,0 +1,26 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - MySQL - Raw Database Copy - Media - Weekly
+#
+#  What:   MariaDB's own data folder (/mnt/cache/appdata/mysql14)
+#  Type:   Raw Database Copy, kept as an Exact Mirror (taken while MariaDB runs)
+#  To:     the Media share, the same place Backup MySQL Weekly has always used
+#          (/mnt/user/Media/mysqlbackup/weekly/mysql14).
+#  When:   weekly (Sunday)
+#
+#  Replaces the folder-copy step of "Backup MySQL Weekly". (The empty weekly-MM-DD.txt
+#  marker files it created are no longer added; Backup Check records each run instead.)
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/cache/appdata/mysql14"      # no trailing slash: copied as the folder "mysql14"
+DEST="/mnt/user/Media/mysqlbackup/weekly"
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "mysql-raw-media-weekly" "MySQL - Raw Database Copy - Media - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/user/Media/mysqlbackup"
+
+backup_mirror "MySQL data folder" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish

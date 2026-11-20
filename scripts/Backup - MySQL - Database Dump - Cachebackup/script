@@ -1,0 +1,34 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - MySQL - Database Dump - Cachebackup
+#
+#  What:   every database in the mariadb container
+#  Type:   Database Dump - a plain .sql file any MariaDB/MySQL can load:
+#            mysql -u root -p < all-databases-daily.sql
+#  To:     the cachebackup pool, the same file ABackupAppdata has always written,
+#          plus 7 dated, compressed copies (one per day) next to it.
+#  When:   daily
+#
+#  Replaces the "MySQL Dump" step of ABackupAppdata. Safety rules (backup library):
+#  a failed or incomplete dump never replaces the last good one, and a dump less than
+#  half the size of the last one is kept aside with a warning.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+CONTAINER="mariadb"
+DB_USER="root"
+DB_PASS="__MARIADB_PASSWORD__"          # filled in when the script is installed (never stored in the git repo)
+
+DIR="/mnt/cachebackup/backups/mysql/daily"
+STAMP_FILE="/mnt/cachebackup/backups/mysql/mysql-daily_backup.log"   # the old completion stamp, kept up to date
+KEEP_DATED=7
+
+backup_start "mysql-dump-cachebackup" "MySQL - Database Dump - Cachebackup"
+backup_need_mounted "/mnt/cachebackup/backups/mysql"
+[ "$DB_PASS" = "__MARIADB_PASSWORD__" ] && backup_abort "The database password has not been filled in (this is the repo copy of the script)."
+
+if backup_mysqldump "$CONTAINER" "$DB_USER" "$DB_PASS" "$DIR/all-databases-daily.sql" "$DIR/all-databases-$(date +%Y-%m-%d).sql.gz"; then
+  [ ${#BACKUP_WARNINGS[@]} -eq 0 ] && date > "$STAMP_FILE"
+fi
+backup_prune "$DIR" "all-databases-20??-??-??.sql.gz" "$KEEP_DATED"
+backup_finish

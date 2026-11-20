@@ -1,0 +1,44 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Appdata - No Deletes - Cachebackup
+#
+#  What:   all of appdata (every container's config and database)
+#  Type:   No Deletes - new and changed files are copied; nothing is ever removed
+#          from the backup, so a container you deleted long ago can still be restored.
+#  To:     the cachebackup pool, the same folder ABackupAppdata has always used.
+#
+#  Replaces the "Appdata to Cachebackup Daily" step of ABackupAppdata.
+#  Same files skipped as before: Plex's temporary database files and its dated
+#  database copies (they are rebuilt by Plex and would only fill the backup).
+#  Containers keep running while this copies (the Appdata Backup plugin is the
+#  backup taken with the apps stopped).
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/cache/appdata/"
+DEST="/mnt/cachebackup/backups/appdata/daily/"
+STAMP_FILE="/mnt/cachebackup/backups/appdata/appdata-daily_backup.log"   # the old completion stamp, kept up to date
+
+EXCLUDES=(
+  --exclude='*.pre-vacuum*'
+  --exclude='com.plexapp.plugins.library.db-20*'
+  --exclude='com.plexapp.plugins.library.blobs.db-20*'
+  --exclude='com.plexapp.plugins.library.db-wal'
+  --exclude='com.plexapp.plugins.library.db-shm'
+  --exclude='com.plexapp.plugins.library.blobs.db-wal'
+  --exclude='com.plexapp.plugins.library.blobs.db-shm'
+)
+
+# Dry-run mode for testing: BACKUP_DRY_RUN=1 shows what would be copied, copies nothing.
+[ "$BACKUP_DRY_RUN" = 1 ] && EXCLUDES+=(--dry-run)
+
+backup_start "appdata-nodeletes-cachebackup" "Appdata - No Deletes - Cachebackup"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/cachebackup/backups/appdata"
+
+backup_nodeletes "Appdata" "$SOURCE" "$DEST" "${EXCLUDES[@]}"
+
+if [ ${#BACKUP_ERRORS[@]} -eq 0 ] && [ "$BACKUP_DRY_RUN" != 1 ]; then
+  date > "$STAMP_FILE"
+fi
+backup_finish

@@ -1,0 +1,1 @@
+Weekly: appdata mirrored exactly to the cachebackup pool (appdata/weekly). Files deleted on the server are removed here too. Refuses to run on a missing or empty source.

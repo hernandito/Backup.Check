@@ -1,0 +1,29 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Ruizdocs - No Deletes and Old Versions - NTFS-Backup - Weekly
+#
+#  What:   the ruizdocs share, Camera included (/mnt/user/ruizdocs)
+#  Type:   No Deletes and Old Versions (see the FilesBackup version), with the same tripwire
+#  To:     NTFS-Backup (readable on Windows) - a second, separate drive.
+#  When:   weekly (Sunday)
+#
+#  New copy. The first full copy (about 2.5 TB) is done by hand; this script carries on
+#  from it. Do not schedule it before that first copy has finished.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/user/ruizdocs/"
+DEST="/mnt/disks/NTFS-Backup/ruizdocs/"
+TRIPWIRE_MAX=50           # raise for one run if you deliberately change many files
+
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "ruizdocs-versions-ntfsbackup-weekly" "Ruizdocs - No Deletes and Old Versions - NTFS-Backup - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disks/NTFS-Backup"
+[ -d "$DEST" ] || backup_abort "$DEST does not exist yet - do the first copy by hand before scheduling this script."
+
+backup_tripwire ntfs "$SOURCE" "$DEST" "$TRIPWIRE_MAX" "${OPTS[@]}"
+backup_versions_ntfs "Ruizdocs" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish

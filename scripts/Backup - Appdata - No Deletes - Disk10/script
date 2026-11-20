@@ -1,0 +1,35 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Appdata - No Deletes - Disk10
+#
+#  What:   all of appdata (every container's config and database)
+#  Type:   No Deletes - new and changed files are copied; nothing is ever removed
+#          from the backup, so a container you deleted long ago can still be restored.
+#  To:     array disk 10, the same folder ABackupAppdata has always used.
+#          A second, separate drive from the cachebackup copy: if one dies, the other remains.
+#
+#  Replaces the "Appdata to Disk 10" step of ABackupAppdata.
+#  Same files skipped as before: Plex's temporary database files and dated database copies.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/cache/appdata/"
+DEST="/mnt/disk10/cache-backup/appdata2/"
+
+EXCLUDES=(
+  --exclude='*.pre-vacuum*'
+  --exclude='com.plexapp.plugins.library.db-20*'
+  --exclude='com.plexapp.plugins.library.blobs.db-20*'
+  --exclude='com.plexapp.plugins.library.db-wal'
+  --exclude='com.plexapp.plugins.library.db-shm'
+  --exclude='com.plexapp.plugins.library.blobs.db-wal'
+  --exclude='com.plexapp.plugins.library.blobs.db-shm'
+)
+[ "$BACKUP_DRY_RUN" = 1 ] && EXCLUDES+=(--dry-run)
+
+backup_start "appdata-nodeletes-disk10" "Appdata - No Deletes - Disk10"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disk10/cache-backup"
+
+backup_nodeletes "Appdata" "$SOURCE" "$DEST" "${EXCLUDES[@]}"
+backup_finish

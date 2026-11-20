@@ -1,0 +1,1 @@
+Weekly: the ruizdocs share (Camera included) to FilesBackup, Windows-readable. Never deletes; old versions of changed files are kept in "Old Versions". A tripwire stops the copy if an unusual number of files changed.

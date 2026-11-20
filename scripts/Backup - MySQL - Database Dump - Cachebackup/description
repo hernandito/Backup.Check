@@ -1,0 +1,1 @@
+All MariaDB databases dumped to a .sql file on the cachebackup pool (mysql/daily), plus 7 dated compressed copies. A failed or incomplete dump never replaces the last good one.

@@ -1,0 +1,119 @@
+<?xml version="1.0" standalone="yes"?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name "backupcheck">
+<!ENTITY author "hernandito">
+<!ENTITY version "2026.11.20">
+<!ENTITY github "hernandito/Backup.Check">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
+<!ENTITY cache "/boot/config/plugins/&name;/&version;">
+<!ENTITY src "https://raw.githubusercontent.com/&github;/&version;">
+]>
+<PLUGIN name="&name;"
+        author="&author;"
+        version="&version;"
+        launch="/Tools/BackupCheck"
+        icon="backupcheck.png"
+        pluginURL="&pluginURL;"
+        support="https://github.com/&github;"
+        min="6.12.0">
+
+<CHANGES>
+
+###2026.11.20
+- Initial release: one dashboard for every backup on the server, organised by the data being protected.
+- A card per kind of data: when it was last backed up, every copy (its type and the drive it lands on) grouped daily / weekly / monthly, the last 7 days of each copy, and how far back you can restore.
+- Drill in: each copy's full path, a "restore from here" pointer, each job's runs with files new / changed / removed, and the exact list of files a run touched, grouped by folder.
+- Jobs and Locations views. Uses the friendly script names set in User Scripts / Script Deck.
+- Reads each backup script's own run record, User Scripts schedules, Script Deck history and the Appdata Backup plugin. Read-only: it never changes a backup.
+
+</CHANGES>
+
+<!--
+  OFFLINE-SAFE INSTALL
+  Unraid re-runs this file at every boot. Each file is kept on the flash drive in a folder named
+  after the version (&cache;), so after the first install a boot needs no internet. Downloads are
+  pinned to the git tag &version;, and every file is checked against its MD5.
+-->
+<FILE Name="&cache;/BackupCheck.page"><URL>&src;/BackupCheck.page</URL><MD5>bbf13dfd33e51c19351085ca684c1c1b</MD5></FILE>
+<FILE Name="&cache;/BackupCheck.php"><URL>&src;/BackupCheck.php</URL><MD5>96175759859d02692a568a9ad33818d1</MD5></FILE>
+<FILE Name="&cache;/BackupCheck.css"><URL>&src;/BackupCheck.css</URL><MD5>ba3ceb1a8519ae3ff83aa2c4130491b1</MD5></FILE>
+<FILE Name="&cache;/BackupCheck.js"><URL>&src;/BackupCheck.js</URL><MD5>ae9e0a5fc763c0c870c149dea3850792</MD5></FILE>
+<FILE Name="&cache;/api.php"><URL>&src;/api.php</URL><MD5>04cbb757b1da293bf872a8e97bd329ee</MD5></FILE>
+<FILE Name="&cache;/include/collect.php"><URL>&src;/include/collect.php</URL><MD5>0dee521df55ba61c4b4b54651812d75d</MD5></FILE>
+<FILE Name="&cache;/include/BCCron.php"><URL>&src;/include/BCCron.php</URL><MD5>84dde8fcead281f288e86091b831370d</MD5></FILE>
+<FILE Name="&cache;/catalog.default.json"><URL>&src;/catalog.default.json</URL><MD5>a1bcac07edafe6dc77453273eaec4d68</MD5></FILE>
+<FILE Name="&cache;/backup-status.sh"><URL>&src;/backup-status.sh</URL><MD5>a5c0a757390675df991b18c888936391</MD5></FILE>
+<FILE Name="&cache;/README.md"><URL>&src;/description.txt</URL><MD5>fb80842dee624002a652ddd1838a9ef4</MD5></FILE>
+<FILE Name="&cache;/backupcheck.png"><URL>&src;/backupcheck.png</URL><MD5>bf6c0a7e2f4824a288d4b845cb42471f</MD5></FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+NAME="backupcheck"
+VERSION="]]>&version;<![CDATA["
+PLUGDIR="/usr/local/emhttp/plugins/$NAME"
+CONF="/boot/config/plugins/$NAME"
+CACHE="$CONF/$VERSION"
+
+# Lay down a clean copy of this version from the flash cache
+rm -rf "$PLUGDIR"
+mkdir -p "$PLUGDIR"
+cp -r "$CACHE"/. "$PLUGDIR"/
+
+# First install only: give the user an editable catalog (never overwrite their edits)
+[ -f "$CONF/catalog.json" ] || cp "$CACHE/catalog.default.json" "$CONF/catalog.json"
+
+# Remove cached files from older versions (keeps catalog.json)
+for d in "$CONF"/*/; do
+  v=$(basename "$d")
+  case "$v" in
+    20[0-9][0-9].[0-9][0-9].[0-9][0-9]*) [ "$v" != "$VERSION" ] && rm -rf "$d" ;;
+  esac
+done
+
+chown -R root:root "$PLUGDIR"
+chmod -R 755 "$PLUGDIR"
+
+# Refresh the status every 30 minutes (reads only; USB/array paths at most every 6 hours)
+echo "# Backup Check: refresh backup status" > "$CONF/$NAME.cron"
+echo "*/30 * * * * /usr/bin/php $PLUGDIR/include/collect.php &> /dev/null" >> "$CONF/$NAME.cron"
+/usr/local/sbin/update_cron
+
+# Build the first status now, in the background
+( /usr/bin/php "$PLUGDIR/include/collect.php" &> /dev/null & )
+
+echo ""
+echo "----------------------------------------------------"
+echo " Backup Check has been installed."
+echo " Version: $VERSION"
+echo " Open it at Tools > Backup Check."
+echo "----------------------------------------------------"
+echo ""
+]]>
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+<![CDATA[
+NAME="backupcheck"
+PLUGDIR="/usr/local/emhttp/plugins/$NAME"
+CONF="/boot/config/plugins/$NAME"
+
+rm -f "$CONF/$NAME.cron"
+/usr/local/sbin/update_cron
+rm -rf "$PLUGDIR"
+for d in "$CONF"/20[0-9][0-9].[0-9][0-9].[0-9][0-9]*/; do [ -d "$d" ] && rm -rf "$d"; done
+
+echo ""
+echo "----------------------------------------------------------------------------"
+echo " Backup Check has been uninstalled."
+echo " Your catalog (/boot/config/plugins/backupcheck/catalog.json) and the status"
+echo " history in the appdata backup-check folder were kept."
+echo "----------------------------------------------------------------------------"
+echo ""
+]]>
+</INLINE>
+</FILE>
+</PLUGIN>

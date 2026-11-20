@@ -1,0 +1,1 @@
+Appdata to the cachebackup pool (appdata/daily). No Deletes: new and changed files are copied, nothing is ever removed from the backup.

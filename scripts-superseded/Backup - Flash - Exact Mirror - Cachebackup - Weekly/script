@@ -1,0 +1,28 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Flash - Exact Mirror - Cachebackup - Weekly
+#
+#  What:   the whole unRAID flash drive (/boot)
+#  Type:   Exact Mirror - an exact copy of the flash drive as it is on Sunday
+#  To:     the cachebackup pool, the same folder Backup Appdata - Weekly has always used.
+#  When:   weekly (Sunday)
+#
+#  Replaces the flash step of "Backup Appdata - Weekly".
+#  The flash drive is FAT (no real owners/permissions); the backup's files are
+#  nobody:users 777 and stay that way. The backup folder itself keeps its own settings.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/boot/"
+DEST="/mnt/cachebackup/backups/Flash-Drive/weekly/"
+STAMP_FILE="/mnt/cachebackup/backups/Flash-Drive/flashdrive-weekly_backup.log"   # the old completion stamp, kept up to date
+OPTS=(--chown=nobody:users --chmod=ugo=rwx --modify-window=1)
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "flash-mirror-cachebackup-weekly" "Flash - Exact Mirror - Cachebackup - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/cachebackup/backups/Flash-Drive"
+
+backup_mirror "Flash drive" "$SOURCE" "$DEST" "${OPTS[@]}"
+[ ${#BACKUP_ERRORS[@]} -eq 0 ] && [ "$BACKUP_DRY_RUN" != 1 ] && date > "$STAMP_FILE"
+backup_finish

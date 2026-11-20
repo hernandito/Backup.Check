@@ -1,0 +1,25 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Flash - No Deletes - FilesBackup - Weekly
+#
+#  What:   the whole unRAID flash drive (/boot)
+#  Type:   No Deletes - new and changed files are copied; nothing is ever removed
+#  To:     FilesBackup (NTFS, readable on Windows), the same folder the old
+#          "Backup Ruizdocs" script used for its flash copy: flashbackup-weekly
+#  When:   weekly (Sunday)
+#
+#  Replaces the flash step hidden inside "Backup Ruizdocs".
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/boot/"
+DEST="/mnt/disks/FilesBackup/flashbackup-weekly/"
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "flash-nodeletes-filesbackup-weekly" "Flash - No Deletes - FilesBackup - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disks/FilesBackup"
+
+backup_nodeletes_ntfs "Flash drive" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish

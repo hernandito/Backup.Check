@@ -1,0 +1,1 @@
+The flash drive (/boot) to the cachebackup pool (Flash-Drive/daily). No Deletes: new and changed files are copied, nothing is ever removed from the backup.

@@ -1,0 +1,28 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - MySQL - Raw Database Copy - Media
+#
+#  What:   MariaDB's own data folder (/mnt/cache/appdata/mysql14)
+#  Type:   Raw Database Copy, kept as an Exact Mirror - the database files copied as
+#          they are. Taken while MariaDB runs, so the Database Dump is the reliable
+#          restore; this is an extra copy on a different drive (the array).
+#  To:     the Media share, the same place Backup MySQL Daily has always used
+#          (/mnt/user/Media/mysqlbackup/daily/mysql14).
+#  When:   daily
+#
+#  Replaces "Backup MySQL Daily".
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/cache/appdata/mysql14"      # no trailing slash: copied as the folder "mysql14"
+DEST="/mnt/user/Media/mysqlbackup/daily"
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "mysql-raw-media" "MySQL - Raw Database Copy - Media"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/user/Media/mysqlbackup"
+
+backup_mirror "MySQL data folder" "$SOURCE" "$DEST" "${OPTS[@]}"
+[ ${#BACKUP_ERRORS[@]} -eq 0 ] && [ "$BACKUP_DRY_RUN" != 1 ] && touch /mnt/user/Media/mysqlbackup/daily.txt   # the old marker, kept up to date
+backup_finish

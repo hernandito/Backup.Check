@@ -1,0 +1,36 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Flash - Dated Archive - Cachebackup - Monthly
+#
+#  What:   the whole unRAID flash drive (/boot)
+#  Type:   Dated Archive - one compressed file per month (flash-YYYY-MM-DD.tar.gz),
+#          the last 12 kept. Lets you go back to the flash drive as it was months ago.
+#  To:     the cachebackup pool: Flash-Drive/monthly-archives/ (a new folder)
+#  When:   monthly (the 1st)
+#
+#  New (the old "Backup Appdata - Monthly" is disabled and its folders are left alone).
+#  The archive holds the license key and config, so it is readable by root only.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+DIR="/mnt/cachebackup/backups/Flash-Drive/monthly-archives"
+KEEP=12
+FILE="$DIR/flash-$(date +%Y-%m-%d).tar.gz"
+
+backup_start "flash-archive-cachebackup-monthly" "Flash - Dated Archive - Cachebackup - Monthly"
+backup_need_source  "/boot/"
+backup_need_mounted "/mnt/cachebackup/backups/Flash-Drive"
+mkdir -p "$DIR" && chmod 700 "$DIR"
+
+backup_say "Archiving /boot to $FILE ..."
+if tar -czf "$FILE.partial" -C /boot . 2> /tmp/backup-flash-tar.err && gzip -t "$FILE.partial"; then
+  chmod 600 "$FILE.partial" && mv -f "$FILE.partial" "$FILE"
+  backup_ok "Archive saved: $(basename "$FILE") ($(du -h "$FILE" | cut -f1))"
+  BACKUP_STEPS+=("{\"name\":\"Flash archive\",\"status\":\"ok\",\"bytes\":$(stat -c %s "$FILE")}")
+else
+  rm -f "$FILE.partial"
+  backup_error "The flash archive could not be made: $(tail -1 /tmp/backup-flash-tar.err)"
+fi
+backup_prune "$DIR" "flash-20??-??-??.tar.gz" "$KEEP"
+backup_say "Archives kept: $(ls -1 "$DIR"/flash-20??-??-??.tar.gz 2>/dev/null | wc -l) (newest $KEEP)"
+backup_finish

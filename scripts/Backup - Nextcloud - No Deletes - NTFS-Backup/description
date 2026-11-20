@@ -1,0 +1,1 @@
+Nextcloud files to NTFS-Backup (a second drive), Windows-readable. No Deletes: files deleted from Nextcloud stay in the backup. A tripwire stops the copy if an unusual number of files changed.

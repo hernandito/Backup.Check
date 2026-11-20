@@ -1,0 +1,32 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - MySQL - Dated Archive - Cachebackup - Monthly
+#
+#  What:   every database in the mariadb container
+#  Type:   Dated Archive - one compressed dump per month
+#          (all-databases-YYYY-MM-DD.sql.gz), the last 12 kept. Lets you go back to the
+#          databases as they were months ago.
+#  To:     the cachebackup pool: mysql/monthly-archives/ (a new folder)
+#  When:   monthly (the 1st)
+#
+#  New (the old "Backup MySQL Monthly" is disabled; its archives on the Media share are
+#  left as they are).
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+CONTAINER="mariadb"
+DB_USER="root"
+DB_PASS="__MARIADB_PASSWORD__"          # filled in when the script is installed (never stored in the git repo)
+
+DIR="/mnt/cachebackup/backups/mysql/monthly-archives"
+KEEP=12
+
+backup_start "mysql-archive-cachebackup-monthly" "MySQL - Dated Archive - Cachebackup - Monthly"
+backup_need_mounted "/mnt/cachebackup/backups/mysql"
+[ "$DB_PASS" = "__MARIADB_PASSWORD__" ] && backup_abort "The database password has not been filled in (this is the repo copy of the script)."
+mkdir -p "$DIR"
+
+backup_mysqldump "$CONTAINER" "$DB_USER" "$DB_PASS" "$DIR/all-databases-latest-monthly.sql" "$DIR/all-databases-$(date +%Y-%m-%d).sql.gz"
+backup_prune "$DIR" "all-databases-20??-??-??.sql.gz" "$KEEP"
+backup_say "Archives kept: $(ls -1 "$DIR"/all-databases-20??-??-??.sql.gz 2>/dev/null | wc -l) (newest $KEEP)"
+backup_finish

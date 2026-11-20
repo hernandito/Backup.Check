@@ -1,0 +1,235 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Reports
+#
+#  Builds the server's rebuild reports in one place, every night:
+#    which disk is in which slot (with serials), what is on every drive,
+#    which drive holds which movies/TV, shares, containers, plugins, system
+#    details, and the backup schedule.
+#
+#  Then leaves an up-to-date copy on each backup drive, so the reports can be
+#  read from any Windows PC even when the server itself is down.
+#
+#    Reports folder:  /mnt/cache/appdata/reports/server/latest/   (+ history/, 30 days)
+#    Copies:          /mnt/disks/FilesBackup/Server Reports/
+#                     /mnt/disks/NTFS-Backup/Server Reports/      (skipped if unmounted)
+#                     /boot/config/server-reports/                 (small text files only)
+#
+#  Note: listing the contents of every array drive wakes the array disks,
+#  as the existing nightly catalog scripts already do.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+REPORTS_ROOT="/mnt/cache/appdata/reports/server"
+KEEP_DAYS=30
+DRIVE_COPIES=("/mnt/disks/FilesBackup" "/mnt/disks/NTFS-Backup")
+FLASH_COPY="/boot/config/server-reports"
+
+# Preview mode (for testing): REPORTS_PREVIEW=<folder> builds everything there and copies nowhere.
+# Add REPORTS_SKIP_CATALOGS=1 to skip the two catalogs that wake the array disks.
+if [ -n "$REPORTS_PREVIEW" ]; then
+  REPORTS_ROOT="$REPORTS_PREVIEW"; DRIVE_COPIES=(); FLASH_COPY="$REPORTS_PREVIEW/flash-copy"
+fi
+
+backup_start "reports" "Reports"
+backup_need_mounted "/mnt/cache/appdata"
+
+STAMP=$(date '+%Y-%m-%d %H:%M:%S')
+TODAY=$(date +%Y-%m-%d)
+BUILD="$REPORTS_ROOT/.building"
+mkdir -p "$REPORTS_ROOT/history"
+[ -d "$BUILD" ] && rm -rf -- "$BUILD"
+mkdir -p "$BUILD"
+
+report() {   # report <file> <title> <command...>  -> runs the command, records OK/failed
+  local file="$1" title="$2"; shift 2
+  if "$@" > "$BUILD/$file" 2>/dev/null && [ -s "$BUILD/$file" ]; then
+    backup_ok "$title  ($(du -h "$BUILD/$file" | cut -f1))"
+  else
+    backup_warn "$title could not be built"
+  fi
+}
+
+# ---------------------------------------------------------------- the reports
+r_readme() {
+  cat <<EOF
+SERVER REPORTS - $(hostname)
+Built: $STAMP
+
+These files describe the server so it can be rebuilt after a failure.
+They are plain text; open them with Notepad or Excel.
+
+  01 Disk assignments    which disk sits in which slot (parity, disk1, cache...), with serial numbers.
+                         The FIRST thing to check if a disk dies or the config is lost.
+  02 Shares and space    each share, which disks/pools it uses, and how full every drive is.
+  03 Media by drive      which array drive holds each Movies and TV folder.
+  04 All drives          every folder on every array drive (open in Excel, filter by disk).
+  05 Containers          installed Docker containers, images and autostart.
+  06 Plugins             installed plugins and versions.
+  07 System              unRAID version, hardware, network, boot settings.
+  08 Backup schedule     which backup scripts run and when.
+
+Older copies are in the history folder (one per day, last $KEEP_DAYS days).
+EOF
+}
+
+r_disks() {
+  echo "Disk assignments - $(hostname) - $STAMP"
+  echo "Slot = unRAID position. Device = Linux name (can change). Serial = the drive's own ID (never changes)."
+  echo
+  printf "%-12s %-8s %-46s %-10s %-8s %s\n" "SLOT" "DEVICE" "MODEL_SERIAL" "SIZE" "FS" "STATUS"
+  printf "%-12s %-8s %-46s %-10s %-8s %s\n" "----" "------" "------------" "----" "--" "------"
+  awk '
+    function out() { if (n!="" && id!="") printf "%-12s %-8s %-46s %-10s %-8s %s\n", n, d, id, sz, fs, st }
+    /^\[/          { out(); n=""; d=""; id=""; st=""; sz=""; fs="" }
+    /^name=/       { gsub(/name=|"/,"");     n=$0 }
+    /^device=/     { gsub(/device=|"/,"");   d=$0 }
+    /^id=/         { gsub(/id=|"/,"");       id=$0 }
+    /^status=/     { gsub(/status=|"/,"");   st=$0 }
+    /^fsType=/     { gsub(/fsType=|"/,"");   fs=$0 }
+    /^size=/       { gsub(/size=|"/,"");     sz=sprintf("%.1fT", $0/1024/1024/1024) }
+    END            { out() }
+  ' /var/local/emhttp/disks.ini
+  echo
+  echo "All drives in the server (including Unassigned Devices):"
+  lsblk -d -o NAME,SIZE,MODEL,SERIAL,TRAN,ROTA -e 7,1 | grep -vE '^(md|zram|loop)'
+  echo "(ROTA 1 = spinning disk, 0 = SSD/NVMe. TRAN = how it is connected.)"
+  echo
+  echo "Unassigned Devices currently mounted:"
+  awk '$2 ~ "^/mnt/disks/" { print "  " $1 "  ->  " $2 "  (" $3 ")" }' /proc/mounts
+}
+
+r_shares() {
+  echo "Shares and space - $(hostname) - $STAMP"
+  echo
+  printf "%-20s %-14s %-12s %-14s %s\n" "SHARE" "PRIMARY POOL" "USE CACHE" "INCLUDED" "EXCLUDED"
+  for f in /boot/config/shares/*.cfg; do
+    [ -e "$f" ] || continue
+    s=$(basename "$f" .cfg)
+    v() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}$/\1/p" "$f"; }
+    printf "%-20s %-14s %-12s %-14s %s\n" "$s" "$(v shareCachePool)" "$(v shareUseCache)" "$(v shareInclude)" "$(v shareExclude)"
+  done
+  echo
+  echo "Space on every drive:"
+  df -h --output=source,size,used,avail,pcent,target | grep -E "Filesystem|/mnt/"
+}
+
+r_media() {
+  find /mnt/disk*/* -maxdepth 3 -mindepth 2 -type d -not -iname '.*' \
+    \( -path "*/Movies/*" -o -path "*/TV2/*" \) -print 2>/dev/null | sort
+}
+
+r_alldrives() {
+  find /mnt/disk*/* -maxdepth 8 -mindepth 2 -type d -not -iname '.*' -print 2>/dev/null | sort
+}
+
+r_containers() {
+  echo "Docker containers - $(hostname) - $STAMP"
+  echo
+  printf "%-28s %-50s %-10s %s\n" "CONTAINER" "IMAGE" "AUTOSTART" "STATE"
+  local auto=/var/lib/docker/unraid-autostart nm img st as
+  docker ps -a --format '{{.Names}}|{{.Image}}|{{.State}}' 2>/dev/null | sort -f | while IFS='|' read -r nm img st; do
+    as="no"; [ -f "$auto" ] && grep -q "^$nm\b" "$auto" && as="yes"
+    printf "%-28s %-50s %-10s %s\n" "$nm" "$img" "$as" "$st"
+  done
+  echo
+  echo "Container templates on the flash drive (to re-create a container: Docker > Add Container > pick it):"
+  ls -1 /boot/config/plugins/dockerMan/templates-user/ 2>/dev/null | sed 's/^/  /'
+}
+
+r_plugins() {
+  echo "Installed plugins - $(hostname) - $STAMP"
+  echo
+  local p nm ver
+  for p in /boot/config/plugins/*.plg; do
+    [ -e "$p" ] || continue
+    nm=$(basename "$p" .plg)
+    ver=$(grep -oE 'ENTITY version +"[^"]+"' "$p" 2>/dev/null | head -1 | sed 's/.*"\(.*\)"/\1/')
+    printf "%-44s %s\n" "$nm" "${ver:-?}"
+  done
+}
+
+r_system() {
+  echo "System - $(hostname) - $STAMP"
+  echo
+  grep -h '^version=' /etc/unraid-version 2>/dev/null | sed 's/^/unRAID /'
+  echo "Kernel: $(uname -r)"
+  echo "CPU:    $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ //')  ($(nproc) threads)"
+  echo "Memory: $(free -h | awk '/^Mem:/ {print $2}')"
+  echo "Uptime: $(uptime -p)"
+  echo
+  echo "Network:"
+  ip -4 -brief addr show 2>/dev/null | grep -v '^lo' | sed 's/^/  /'
+  echo
+  echo "Boot options (kernel command line):"
+  echo "  $(cat /proc/cmdline)"
+  echo
+  echo "Array:"
+  grep -E '^(mdState|mdNumDisks|mdResyncPos|sbSynced)=' /var/local/emhttp/var.ini 2>/dev/null | sed 's/^/  /'
+}
+
+r_schedule() {
+  echo "User Scripts schedule - $(hostname) - $STAMP"
+  echo "(daily = 01:59, weekly = Sunday 01:30, monthly = 4th at 02:20, as set in the root crontab)"
+  echo
+  php -r '
+    $s = json_decode(@file_get_contents("/boot/config/plugins/user.scripts/schedule.json"), true) ?: [];
+    $on = []; $off = [];
+    foreach ($s as $path => $e) {
+      $name = basename(dirname($path));
+      $f = $e["frequency"] ?? "?";
+      $row = sprintf("  %-46s %s", $name, $f === "custom" ? "custom: " . $e["custom"] : $f);
+      if ($f === "disabled") $off[] = $row; else $on[] = $row;
+    }
+    sort($on); sort($off);
+    echo "Scheduled:\n", implode("\n", $on), "\n\nDisabled:\n", implode("\n", $off), "\n";
+  '
+  echo
+  echo "Appdata Backup plugin: $(grep -oE '[0-9*,/ -]+ php' /boot/config/plugins/appdata.backup/appdata_backup.cron 2>/dev/null | sed 's/ php//')"
+}
+
+backup_say "Building reports in $BUILD"
+report "00 README.txt"              "Read-me"                 r_readme
+report "01 Disk assignments.txt"    "Disk assignments"        r_disks
+report "02 Shares and space.txt"    "Shares and space"        r_shares
+if [ "$REPORTS_SKIP_CATALOGS" = 1 ]; then
+  backup_note "Preview: skipping the two drive catalogs (they wake the array disks)"
+else
+  report "03 Media by drive.csv"      "Media by drive"          r_media
+  report "04 All drives.csv"          "All drives catalog"      r_alldrives
+fi
+report "05 Containers.txt"          "Containers"              r_containers
+report "06 Plugins.txt"             "Plugins"                 r_plugins
+report "07 System.txt"              "System"                  r_system
+report "08 Backup schedule.txt"     "Backup schedule"         r_schedule
+
+# Swap the new set in as "latest" (only after it is fully built), and keep a dated copy.
+if [ -s "$BUILD/01 Disk assignments.txt" ]; then
+  rm -rf -- "$REPORTS_ROOT/latest.old"
+  [ -d "$REPORTS_ROOT/latest" ] && mv "$REPORTS_ROOT/latest" "$REPORTS_ROOT/latest.old"
+  mv "$BUILD" "$REPORTS_ROOT/latest" && rm -rf -- "$REPORTS_ROOT/latest.old"
+  mkdir -p "$REPORTS_ROOT/history/$TODAY"
+  for f in "$REPORTS_ROOT/latest"/*; do gzip -c "$f" > "$REPORTS_ROOT/history/$TODAY/$(basename "$f").gz"; done
+  backup_prune "$REPORTS_ROOT/history" "20??-??-??" "$KEEP_DAYS"
+  backup_ok "Reports saved to $REPORTS_ROOT/latest (history: $KEEP_DAYS days)"
+else
+  backup_abort "The disk assignment report could not be built; the previous reports were kept."
+fi
+
+# Copies on the backup drives (an exact copy of the reports folder, history included).
+for drive in "${DRIVE_COPIES[@]}"; do
+  if backup_is_mounted "$drive"; then
+    backup_mirror_ntfs "Copy to $(basename "$drive")" "$REPORTS_ROOT/" "$drive/Server Reports/"
+  else
+    backup_note "$(basename "$drive") is not mounted - its copy is skipped this time."
+  fi
+done
+
+# Small text reports on the flash drive too (no big catalogs: they would wear the flash).
+mkdir -p "$FLASH_COPY"
+for f in "00 README.txt" "01 Disk assignments.txt" "02 Shares and space.txt" "05 Containers.txt" "06 Plugins.txt" "07 System.txt" "08 Backup schedule.txt"; do
+  [ -s "$REPORTS_ROOT/latest/$f" ] && cp -f "$REPORTS_ROOT/latest/$f" "$FLASH_COPY/$f"
+done
+backup_ok "Small reports copied to $FLASH_COPY"
+
+backup_finish

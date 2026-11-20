@@ -1,0 +1,35 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Flash - No Deletes - Cachebackup
+#
+#  What:   the whole unRAID flash drive (/boot): array and pool config, plugins,
+#          User Scripts, Docker templates, license key.
+#  Type:   No Deletes - new and changed files are copied; nothing is ever removed
+#          from the backup.
+#  To:     the cachebackup pool, the same folder ABackupAppdata has always used.
+#
+#  Replaces the "Flash Drive to Cachebackup Daily" step of ABackupAppdata.
+#  Restore: the files are plain copies - copy them onto a fresh USB stick.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/boot/"
+DEST="/mnt/cachebackup/backups/Flash-Drive/daily/"
+STAMP_FILE="/mnt/cachebackup/backups/Flash-Drive/flashdrive-daily_backup.log"   # the old completion stamp, kept up to date
+
+# The flash drive is FAT: it has no real Linux owners/permissions to keep, and its file times
+# are rounded to 2 seconds. The backup folder's files are nobody:users 777 (browsable over the
+# network), so every file written here gets exactly that too - owners and access stay as they are.
+OPTS=(--chown=nobody:users --chmod=ugo=rwx --modify-window=1)
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "flash-nodeletes-cachebackup" "Flash - No Deletes - Cachebackup"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/cachebackup/backups/Flash-Drive"
+
+backup_nodeletes "Flash drive" "$SOURCE" "$DEST" "${OPTS[@]}"
+
+if [ ${#BACKUP_ERRORS[@]} -eq 0 ] && [ "$BACKUP_DRY_RUN" != 1 ]; then
+  date > "$STAMP_FILE"
+fi
+backup_finish

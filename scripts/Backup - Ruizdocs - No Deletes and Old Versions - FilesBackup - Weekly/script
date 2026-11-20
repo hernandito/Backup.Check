@@ -1,0 +1,34 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Ruizdocs - No Deletes and Old Versions - FilesBackup - Weekly
+#
+#  What:   the ruizdocs share, Camera included (/mnt/user/ruizdocs)
+#  Type:   No Deletes and Old Versions - new and changed files are copied and nothing is
+#          ever removed; when a file changes (say, your resume), its previous version is
+#          kept right next to it, with the date that version was saved (MMDDYY):
+#              My Resume 2024.docx            <- current version
+#              My Resume 2024-v110626.docx    <- the version as it was on Nov 6, 2026
+#  Guard:  Tripwire - if more than TRIPWIRE_MAX existing files would change in one run
+#          (normal is 0-2), nothing is copied and you get an alert.
+#  To:     FilesBackup (NTFS, readable on Windows), the same folder "Backup Ruizdocs" uses.
+#  When:   weekly (Sunday)
+#
+#  Replaces the ruizdocs step of "Backup Ruizdocs" (and makes "Backup Camera Weekly"
+#  unnecessary: Camera is inside ruizdocs). The existing Camera/Camera copy is left as it is.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/user/ruizdocs/"
+DEST="/mnt/disks/FilesBackup/ruizdocs/"
+TRIPWIRE_MAX=50           # raise for one run if you deliberately change many files
+
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "ruizdocs-versions-filesbackup-weekly" "Ruizdocs - No Deletes and Old Versions - FilesBackup - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disks/FilesBackup"
+
+backup_tripwire ntfs "$SOURCE" "$DEST" "$TRIPWIRE_MAX" "${OPTS[@]}"
+backup_versions_ntfs "Ruizdocs" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish
