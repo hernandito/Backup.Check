@@ -44,7 +44,7 @@
 <FILE Name="&cache;/include/BCCron.php"><URL>&src;/include/BCCron.php</URL><MD5>84dde8fcead281f288e86091b831370d</MD5></FILE>
 <FILE Name="&cache;/catalog.default.json"><URL>&src;/catalog.default.json</URL><MD5>a1bcac07edafe6dc77453273eaec4d68</MD5></FILE>
 <FILE Name="&cache;/backup-status.sh"><URL>&src;/backup-status.sh</URL><MD5>a5c0a757390675df991b18c888936391</MD5></FILE>
-<FILE Name="&cache;/README.md"><URL>&src;/description.txt</URL><MD5>fb80842dee624002a652ddd1838a9ef4</MD5></FILE>
+<FILE Name="&cache;/README.md"><URL>&src;/description.txt</URL><MD5>ec54859f39aee9b5dd92a23ab1b3f8d0</MD5></FILE>
 <FILE Name="&cache;/backupcheck.png"><URL>&src;/backupcheck.png</URL><MD5>bf6c0a7e2f4824a288d4b845cb42471f</MD5></FILE>
 
 <FILE Run="/bin/bash">

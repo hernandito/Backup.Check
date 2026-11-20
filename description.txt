@@ -1,3 +1,5 @@
 **Backup Check**
 
-One dashboard for every backup on the server, organised by the data being protected. See when each kind of data was last backed up, how many daily, weekly and monthly copies exist, and exactly where each copy is stored, so a restore starts in the right place. Read-only: it never changes a backup.
+One dashboard for every backup on the server, organised by the data being protected: when each was last backed up, where every copy is stored, and how far back it can be restored. Read-only: it never changes a backup.
+
+Built for one specific server; not intended for general use.
