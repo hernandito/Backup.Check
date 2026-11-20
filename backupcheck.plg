@@ -19,6 +19,8 @@
         min="6.12.0">
 
 <CHANGES>
+###2026.11.20a
+- Cleanup Description. Made brief.
 
 ###2026.11.20
 - Initial release: one dashboard for every backup on the server, organised by the data being protected.
