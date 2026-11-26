@@ -2,6 +2,9 @@
   "version": 2,
   "_comment": "Backup Check catalog. Installed to /boot/config/plugins/backupcheck/catalog.json on first install; edit that copy, not this one. See README.md for the schema.",
 
+  "summary": { "copies": ["files", "ntfs"],
+               "_comment": "The daily summary file is saved on the flash drive, and also in a 'Backup Summary' folder on each of these locations." },
+
   "locations": {
     "pool":  { "name": "Cachebackup", "kind": "ZFS pool (SSD)", "path": "/mnt/cachebackup",
                "note": "A separate pool from appdata, so it survives a cache failure. Holds most daily copies and the monthly archives." },
@@ -41,12 +44,12 @@
     "mysql-archive-cachebackup-monthly":  { "name": "Backup - MySQL - Dated Archive - Cachebackup - Monthly", "type": "userscript", "since": "2026-11-19", "script": "Backup - MySQL - Dated Archive - Cachebackup - Monthly", "label": "Dated Archive" },
     "nextcloud-nodeletes-filesbackup":    { "name": "Backup - Nextcloud - No Deletes - FilesBackup", "type": "userscript", "since": "2026-11-19", "script": "Backup - Nextcloud - No Deletes - FilesBackup", "label": "No Deletes",
                                             "notes": [["info", "Tripwire: stops if more than 100 files change in one night (normal is 1-2)."]] },
-    "nextcloud-nodeletes-ntfsbackup":     { "name": "Backup - Nextcloud - No Deletes - NTFS-Backup", "type": "userscript", "since": "2026-11-19", "script": "Backup - Nextcloud - No Deletes - NTFS-Backup", "label": "No Deletes",
-                                            "paused": "Paused until the first Ruizdocs copy to NTFS-Backup has finished." },
+    "nextcloud-nodeletes-ntfsbackup":     { "name": "Backup - Nextcloud - No Deletes - NTFS-Backup", "type": "userscript", "since": "2026-11-26", "script": "Backup - Nextcloud - No Deletes - NTFS-Backup", "label": "No Deletes",
+                                            "notes": [["info", "Tripwire: stops if more than 100 files change in one night (normal is 1-2)."]] },
     "ruizdocs-versions-filesbackup-weekly": { "name": "Backup - Ruizdocs - No Deletes and Old Versions - FilesBackup - Weekly", "type": "userscript", "since": "2026-11-19", "script": "Backup - Ruizdocs - No Deletes and Old Versions - FilesBackup - Weekly", "label": "No Deletes and Old Versions",
                                             "notes": [["info", "Old versions are kept next to each file as name-vMMDDYY. Tripwire: stops if more than 50 files change at once."]] },
     "ruizdocs-versions-ntfsbackup-weekly":  { "name": "Backup - Ruizdocs - No Deletes and Old Versions - NTFS-Backup - Weekly", "type": "userscript", "since": "2026-11-19", "script": "Backup - Ruizdocs - No Deletes and Old Versions - NTFS-Backup - Weekly", "label": "No Deletes and Old Versions",
-                                            "paused": "Waiting for the first full copy (being made by hand) to finish." },
+                                            "notes": [["info", "Carries on from the full copy made by hand on Nov 20-21. Same tripwire as the FilesBackup copy."]] },
     "reports":                            { "name": "Backup - Reports", "type": "userscript", "since": "2026-11-19", "script": "Backup - Reports", "label": "Reports" },
 
     "us":   { "name": "Backup UserScripts", "type": "userscript", "script": "Backup UserScripts", "label": "Snapshots",
@@ -55,10 +58,18 @@
               "notes": [["warn", "Its Docker Reports/assets/ folder is missing, so its change detection isn't working."]] },
     "cc":   { "name": "Claude Code - Backup", "type": "userscript", "script": "Claude Code - Backup", "label": "Dated Archive",
               "notes": [["warn", "Exits with 1 on success when nothing old is purged."]] },
-    "ntfs": { "name": "Backup Key Items to NTFS", "type": "userscript", "script": "Backup Key Items to NTFS", "label": "Windows Copy", "planned": true,
-              "paused": "Planned: will be scheduled daily once the NTFS-Backup copies are in place.",
-              "stamps": ["/mnt/disks/NTFS-Backup/TowerBackup/reports/BACKUP_COMPLETIONS.log"],
-              "notes": [["info", "Run daily, it makes its weekly set on Sundays and its monthly set on the 1st."]] }
+    "appdata-mirror-ntfsbackup":         { "name": "Backup - Appdata - Exact Mirror - NTFS-Backup", "type": "userscript", "since": "2026-11-21", "script": "Backup - Appdata - Exact Mirror - NTFS-Backup", "label": "Exact Mirror",
+                                              "notes": [["info", "Plain files a Windows PC can open directly (not the plugin's tar archives)."]] },
+    "appdata-mirror-ntfsbackup-weekly":  { "name": "Backup - Appdata - Exact Mirror - NTFS-Backup - Weekly", "type": "userscript", "since": "2026-11-21", "script": "Backup - Appdata - Exact Mirror - NTFS-Backup - Weekly", "label": "Exact Mirror" },
+    "appdata-mirror-ntfsbackup-monthly": { "name": "Backup - Appdata - Exact Mirror - NTFS-Backup - Monthly", "type": "userscript", "since": "2026-11-21", "script": "Backup - Appdata - Exact Mirror - NTFS-Backup - Monthly", "label": "Exact Mirror" },
+    "flash-mirror-ntfsbackup":           { "name": "Backup - Flash - Exact Mirror - NTFS-Backup", "type": "userscript", "since": "2026-11-21", "script": "Backup - Flash - Exact Mirror - NTFS-Backup", "label": "Exact Mirror",
+                                              "notes": [["info", "Plain files a Windows PC can open directly."]] },
+    "flash-mirror-ntfsbackup-weekly":    { "name": "Backup - Flash - Exact Mirror - NTFS-Backup - Weekly", "type": "userscript", "since": "2026-11-21", "script": "Backup - Flash - Exact Mirror - NTFS-Backup - Weekly", "label": "Exact Mirror" },
+    "flash-mirror-ntfsbackup-monthly":   { "name": "Backup - Flash - Exact Mirror - NTFS-Backup - Monthly", "type": "userscript", "since": "2026-11-21", "script": "Backup - Flash - Exact Mirror - NTFS-Backup - Monthly", "label": "Exact Mirror" },
+    "mysql-dump-ntfsbackup":                { "name": "Backup - MySQL - Database Dump - NTFS-Backup", "type": "userscript", "since": "2026-11-21", "script": "Backup - MySQL - Database Dump - NTFS-Backup", "label": "Database Dump",
+                                              "notes": [["info", "A copy of the nightly 03:15 dump, as a plain .sql file readable on Windows."]] },
+    "mysql-dump-ntfsbackup-weekly":         { "name": "Backup - MySQL - Database Dump - NTFS-Backup - Weekly", "type": "userscript", "since": "2026-11-21", "script": "Backup - MySQL - Database Dump - NTFS-Backup - Weekly", "label": "Database Dump" },
+    "mysql-dump-ntfsbackup-monthly":        { "name": "Backup - MySQL - Database Dump - NTFS-Backup - Monthly", "type": "userscript", "since": "2026-11-21", "script": "Backup - MySQL - Database Dump - NTFS-Backup - Monthly", "label": "Database Dump" }
   },
 
   "data": [
@@ -69,10 +80,10 @@
         { "job": "abp", "tier": "daily", "location": "files", "path": "/mnt/disks/FilesBackup/appdata-via_plugin/", "keeps": "10 nights, one archive per container", "reach": "any of the last 10 nights", "latestFolder": true },
         { "job": "appdata-nodeletes-cachebackup", "tier": "daily", "location": "pool", "path": "/mnt/cachebackup/backups/appdata/daily/", "keeps": "Latest files, plus everything ever deleted", "reach": "deleted files: forever" },
         { "job": "appdata-nodeletes-disk10", "tier": "daily", "location": "d10", "path": "/mnt/disk10/cache-backup/appdata2/", "keeps": "Latest files, plus everything ever deleted", "reach": "deleted files: forever" },
-        { "job": "ntfs", "tier": "daily", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/daily/appdata/", "keeps": "Latest files, plus everything ever deleted" },
+        { "job": "appdata-mirror-ntfsbackup", "tier": "daily", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/Appdata/daily/", "keeps": "Exact copy as of last night. Plain files, readable on Windows", "reach": "last night" },
         { "job": "appdata-mirror-cachebackup-weekly", "tier": "weekly", "location": "pool", "path": "/mnt/cachebackup/backups/appdata/weekly/", "keeps": "Exact copy as of last Sunday", "reach": "last Sunday" },
-        { "job": "ntfs", "tier": "weekly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/weekly/appdata/", "keeps": "Made on Sundays", "onlyDow": 0 },
-        { "job": "ntfs", "tier": "monthly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/monthly/appdata/", "keeps": "Made on the 1st", "onlyDom": 1 }
+        { "job": "appdata-mirror-ntfsbackup-weekly", "tier": "weekly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/Appdata/weekly/", "keeps": "Exact copy as of last Sunday. Plain files", "reach": "last Sunday" },
+        { "job": "appdata-mirror-ntfsbackup-monthly", "tier": "monthly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/Appdata/monthly/", "keeps": "Exact copy as of the 1st. Plain files", "reach": "the 1st of the month" }
       ] },
     { "id": "flash", "name": "Flash drive", "source": "/boot",
       "desc": "The unRAID boot drive: array config, plugins, User Scripts and Docker templates.",
@@ -80,10 +91,10 @@
       "copies": [
         { "job": "abp", "tier": "daily", "location": "files", "path": "/mnt/disks/FilesBackup/appdata-via_plugin/ (tower-...-boot-backup-*.zip in each set)", "keeps": "10 nights", "reach": "any of the last 10 nights" },
         { "job": "flash-nodeletes-cachebackup", "tier": "daily", "location": "pool", "path": "/mnt/cachebackup/backups/Flash-Drive/daily/", "keeps": "Latest files, plus everything ever deleted", "reach": "deleted files: forever" },
-        { "job": "ntfs", "tier": "daily", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/daily/flash/", "keeps": "Latest files" },
-        { "job": "ntfs", "tier": "weekly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/weekly/flash/", "keeps": "Made on Sundays", "onlyDow": 0 },
+        { "job": "flash-mirror-ntfsbackup", "tier": "daily", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/Flash/daily/", "keeps": "Exact copy as of last night. Plain files, readable on Windows", "reach": "last night" },
+        { "job": "flash-mirror-ntfsbackup-weekly", "tier": "weekly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/Flash/weekly/", "keeps": "Exact copy as of last Sunday. Plain files", "reach": "last Sunday" },
         { "job": "flash-archive-cachebackup-monthly", "tier": "monthly", "location": "pool", "path": "/mnt/cachebackup/backups/Flash-Drive/monthly-archives/", "keeps": "12 dated archives, one per month", "reach": "12 months" },
-        { "job": "ntfs", "tier": "monthly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/monthly/flash/", "keeps": "Made on the 1st", "onlyDom": 1 }
+        { "job": "flash-mirror-ntfsbackup-monthly", "tier": "monthly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/Flash/monthly/", "keeps": "Exact copy as of the 1st. Plain files", "reach": "the 1st of the month" }
       ] },
     { "id": "mysql", "name": "MySQL databases", "source": "mariadb · /mnt/cache/appdata/mysql14",
       "desc": "Every database in the mariadb container.",
@@ -92,12 +103,12 @@
         { "job": "abp", "tier": "daily", "location": "files", "path": "/mnt/disks/FilesBackup/appdata-via_plugin/ (mariadb.tar.gz in each set)", "keeps": "10 nights, container stopped", "reach": "any of the last 10 nights" },
         { "job": "mysql-dump-cachebackup", "tier": "daily", "location": "pool", "path": "/mnt/cachebackup/backups/mysql/daily/all-databases-daily.sql", "keeps": "Latest dump + 7 dated copies", "reach": "7 days of dumps" },
         { "job": "mysql-raw-media", "tier": "daily", "location": "media", "path": "/mnt/user/Media/mysqlbackup/daily/mysql14", "keeps": "Exact copy of the database files" },
-        { "job": "ntfs", "tier": "daily", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/daily/mysql/all-databases.sql", "keeps": "Latest dump" },
+        { "job": "mysql-dump-ntfsbackup", "tier": "daily", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/MySQL/daily/all-databases-daily.sql", "keeps": "Latest dump, readable on Windows" },
         { "job": "mysql-dump-cachebackup-weekly", "tier": "weekly", "location": "pool", "path": "/mnt/cachebackup/backups/mysql/weekly/all-databases-weekly.sql", "keeps": "Latest dump + 4 dated copies", "reach": "4 weeks of dumps" },
         { "job": "mysql-raw-media-weekly", "tier": "weekly", "location": "media", "path": "/mnt/user/Media/mysqlbackup/weekly/mysql14", "keeps": "Exact copy as of last Sunday" },
-        { "job": "ntfs", "tier": "weekly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/weekly/mysql/all-databases.sql", "keeps": "Made on Sundays", "onlyDow": 0 },
+        { "job": "mysql-dump-ntfsbackup-weekly", "tier": "weekly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/MySQL/weekly/all-databases-daily.sql", "keeps": "Dump as of last Sunday", "reach": "last Sunday" },
         { "job": "mysql-archive-cachebackup-monthly", "tier": "monthly", "location": "pool", "path": "/mnt/cachebackup/backups/mysql/monthly-archives/", "keeps": "12 dated dumps, one per month", "reach": "12 months" },
-        { "job": "ntfs", "tier": "monthly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/TowerBackup/monthly/mysql/all-databases.sql", "keeps": "Made on the 1st", "onlyDom": 1 }
+        { "job": "mysql-dump-ntfsbackup-monthly", "tier": "monthly", "location": "ntfs", "path": "/mnt/disks/NTFS-Backup/MySQL/monthly/all-databases-daily.sql", "keeps": "Dump as of the 1st", "reach": "the 1st of the month" }
       ] },
     { "id": "nextcloud", "name": "Nextcloud files", "source": "/mnt/user/Nextcloud",
       "desc": "Everyone's Nextcloud files. Nextcloud's own trash and version folders are skipped.",

@@ -1,0 +1,1 @@
+Weekly (Sunday) rebuild kit on NTFS-Backup as plain Windows-readable files: appdata, flash and the latest MySQL .sql dump, in TowerBackup/weekly. No Deletes: nothing is ever removed from the backup.

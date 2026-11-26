@@ -1,0 +1,68 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Key Items - No Deletes - NTFS-Backup
+#
+#  What:   the "rebuild the server" kit, as plain files a Windows PC can open directly
+#          (no tar or zip archives to unpack):
+#            - Appdata  (/mnt/cache/appdata)  every container's config, plus everything
+#                                             else kept in appdata
+#            - Flash    (/boot)               the unRAID config
+#            - MySQL    the latest full dump (all-databases-daily.sql), made each night at
+#                       03:15 by "Backup - MySQL - Database Dump - Cachebackup". It is copied,
+#                       not dumped again, so this script holds no password.
+#          The server reports are copied to NTFS-Backup by "Backup - Reports".
+#  Type:   No Deletes - new and changed files are copied; nothing is ever removed.
+#  To:     NTFS-Backup (readable on Windows), folder TowerBackup/daily/
+#  When:   daily. The Weekly and Monthly scripts keep their own sets in weekly/ and monthly/.
+#
+#  Replaces "Backup Key Items to NTFS" (the interim script). The first run copies all of
+#  appdata (about 104 GB); after that only changes.
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+DRIVE="/mnt/disks/NTFS-Backup"
+DEST="$DRIVE/TowerBackup/daily"
+APPDATA_SRC="/mnt/cache/appdata/"
+FLASH_SRC="/boot/"
+MYSQL_DIR="/mnt/cachebackup/backups/mysql/daily/"
+MYSQL_FILE="all-databases-daily.sql"
+
+# Same files skipped as the other appdata copies: Plex's temporary and dated database files.
+APPDATA_OPTS=(
+  --exclude='*.sock'
+  --exclude='*.pre-vacuum*'
+  --exclude='com.plexapp.plugins.library.db-20*'
+  --exclude='com.plexapp.plugins.library.blobs.db-20*'
+  --exclude='com.plexapp.plugins.library.db-wal'
+  --exclude='com.plexapp.plugins.library.db-shm'
+  --exclude='com.plexapp.plugins.library.blobs.db-wal'
+  --exclude='com.plexapp.plugins.library.blobs.db-shm'
+)
+FLASH_OPTS=()
+MYSQL_OPTS=(--include="/$MYSQL_FILE" --exclude='*')
+if [ "$BACKUP_DRY_RUN" = 1 ]; then
+  APPDATA_OPTS+=(--dry-run); FLASH_OPTS+=(--dry-run); MYSQL_OPTS+=(--dry-run)
+fi
+
+backup_start "keyitems-nodeletes-ntfsbackup" "Key Items - No Deletes - NTFS-Backup"
+backup_need_mounted "$DRIVE"
+
+# Appdata
+backup_need_source "$APPDATA_SRC"
+backup_nodeletes_ntfs "Appdata" "$APPDATA_SRC" "$DEST/appdata/" "${APPDATA_OPTS[@]}"
+
+# Flash
+backup_need_source "$FLASH_SRC"
+backup_nodeletes_ntfs "Flash" "$FLASH_SRC" "$DEST/flash/" "${FLASH_OPTS[@]}"
+
+# MySQL: copy the newest dump, and warn if it is more than 2 days old
+if [ -s "$MYSQL_DIR$MYSQL_FILE" ]; then
+  if [ -n "$(find "$MYSQL_DIR$MYSQL_FILE" -mmin +2880)" ]; then
+    backup_warn "The MySQL dump is more than 2 days old - check \"Backup - MySQL - Database Dump - Cachebackup\""
+  fi
+  backup_nodeletes_ntfs "MySQL" "$MYSQL_DIR" "$DEST/mysql/" "${MYSQL_OPTS[@]}"
+else
+  backup_warn "No MySQL dump found at $MYSQL_DIR$MYSQL_FILE - MySQL skipped this time"
+fi
+
+backup_finish

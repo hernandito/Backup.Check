@@ -65,7 +65,10 @@
     copy: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
     restore: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>',
     warn: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4.5"/><path d="M12 17.5v.01"/></svg>',
-    clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+    clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    doc: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>',
+    open: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+    save: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>'
   };
 
   // status vocabularies: [colour class, square class, label]
@@ -180,6 +183,36 @@
     return h + '</section>';
   }
 
+  /* ---------- daily summary file: where it is, when it was saved ---------- */
+  function summaryBox() {
+    var s = D.summary;
+    if (!s) return '';
+    var full = s.dir + '/' + s.file;
+    var saved = s.saved ? when(s.saved) + ' · ' + ago(s.saved) + (s.size ? ' · ' + Math.max(1, Math.round(s.size / 1024)) + ' KB' : '') : 'Not saved yet';
+    return '<section class="bc-card bc-sum"><div class="bc-sum-head"><div class="bc-sum-icon">' + ICON.doc + '</div><div style="min-width:0;flex:1 1 auto">' +
+      '<div style="font-weight:600;color:var(--strong)">Daily summary file</div>' +
+      '<div class="bc-muted" style="font-size:12.5px">A one-page report of every backup, saved each morning (09:15) on the flash drive and on the backup drives. It opens in any browser on a Windows PC, even when the server is down.</div></div>' +
+      '<div class="bc-sum-btns">' +
+      '<button class="bc-btn" data-act="sumview">' + ICON.open + '<span>View</span></button>' +
+      '<button class="bc-btn" data-act="sumsave"' + (S.saving ? ' disabled' : '') + '>' + ICON.save + '<span>' + (S.saving ? 'Saving…' : 'Save now') + '</span></button></div></div>' +
+      '<div class="bc-sum-grid">' +
+      '<div><div class="bc-label">On the flash drive (USB stick)</div><span class="bc-code">' + esc(s.windows) + '</span></div>' +
+      '<div><div class="bc-label">On the server</div><span class="bc-code">' + esc(full) + '</span>' +
+      '<button class="bc-linkbtn" data-act="copy" data-path="' + esc(full) + '" style="margin-left:6px">' + ICON.copy + '<span>Copy path</span></button></div>' +
+      '<div><div class="bc-label">Last saved</div><span class="' + (s.saved ? '' : 't-c s-warn') + '">' + esc(saved) + '</span>' +
+      '<div class="bc-muted" style="font-size:12px">Plus one dated copy per day for the last ' + esc(s.keepDays) + ' days (' + esc(s.kept) + ' kept now)' + (s.error ? ' · <span class="t-c s-bad">' + esc(s.error) + '</span>' : '') + '</div></div>' +
+      '</div>' + summaryCopies(s.copies) + '</section>';
+  }
+  function summaryCopies(list) {      // the same file on the backup drives, as of the last save
+    if (!list || !list.length) return '';
+    return '<div class="bc-sum-copies"><div class="bc-label">Also saved on the backup drives</div>' + list.map(function (c) {
+      var ok = !!c.saved && !c.error;
+      return '<div class="bc-sum-copy"><span class="bc-dot ' + (ok ? 's-ok' : 's-warn') + '"></span><b style="color:var(--strong)">' + esc(c.name) + '</b>' +
+        '<span class="bc-code">' + esc(c.dir) + '</span>' +
+        '<span class="t-c ' + (ok ? 's-ok' : 's-warn') + '" style="font-size:12px">' + esc(ok ? 'saved ' + when(c.saved) : (c.error || 'not saved')) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
   /* ---------- overview: one card per kind of data, one row per copy ---------- */
   function copyTable(copies) {
     var h = '';
@@ -204,7 +237,7 @@
   }
 
   function overview() {
-    var h = alertsBox();
+    var h = alertsBox() + summaryBox();
     h += '<div class="bc-sechead"><h2>Your data</h2>' + legend() + '</div>' +
       '<div class="bc-explain">Each row is one backup copy: its type, and the drive it lands on. The squares are that copy\'s last 7 days, with today on the right. Click a card for paths, run history and how to restore.</div>' +
       '<div class="bc-grid">';
@@ -427,12 +460,13 @@
     if (openGroups.length) root.querySelectorAll('details.bc-fgroup').forEach(function (d) { var b = d.querySelector('summary b'); if (b && openGroups.indexOf(b.textContent) >= 0) d.open = true; });
   }
 
-  function load(refresh) {
+  function load(action) {           // action: '' (just read), 'refresh' or 'summary'
     var opts = { credentials: 'same-origin', cache: 'no-store' };
-    if (refresh) {
-      S.busy = true; render();
+    if (action) {
+      if (action === 'summary') S.saving = true; else S.busy = true;
+      render();
       var body = new URLSearchParams();
-      body.append('action', 'refresh');
+      body.append('action', action);
       body.append('csrf_token', (typeof csrf_token !== 'undefined') ? csrf_token : '');
       opts.method = 'POST'; opts.body = body;
     }
@@ -440,7 +474,7 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     }).then(function (j) { D = j; S.err = null; }).catch(function (e) { S.err = e.message; })
-      .then(function () { S.busy = false; render(); });
+      .then(function () { S.busy = false; S.saving = false; render(); });
   }
 
   function act(b) {
@@ -451,7 +485,9 @@
     else if (a === 'data') { S.view = 'data'; S.selData = id; top = true; }
     else if (a === 'job') { if (S.selJob !== id) S.files = null; S.view = 'scripts'; S.selJob = id; top = true; }
     else if (a === 'files') { loadFiles(b.getAttribute('data-job'), b.getAttribute('data-run')); return; }
-    else if (a === 'refresh') { if (!S.busy) load(true); return; }
+    else if (a === 'refresh') { if (!S.busy) load('refresh'); return; }
+    else if (a === 'sumsave') { if (!S.saving) load('summary'); return; }
+    else if (a === 'sumview') { window.open(API + '?summary=view', '_blank', 'noopener'); return; }
     else if (a === 'go') {
       var al = (D.alerts || [])[+b.getAttribute('data-i')];
       if (al && al.go) {
@@ -485,6 +521,6 @@
     if (bg && (0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]) < 110) root.classList.add('bc-dark');
   } catch (e) { /* keep light */ }
 
-  load(false);
-  setInterval(function () { if (!S.busy && !S.files && document.visibilityState === 'visible') load(false); }, 60000);
+  load('');
+  setInterval(function () { if (!S.busy && !S.saving && !S.files && document.visibilityState === 'visible') load(''); }, 60000);
 })();

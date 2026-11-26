@@ -1,0 +1,41 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Appdata - Exact Mirror - NTFS-Backup - Monthly
+#
+#  What:   all of appdata (/mnt/cache/appdata): every container's config and database,
+#          plus everything else kept in appdata
+#  Type:   Exact Mirror - the backup becomes an exact copy of the source, so files deleted
+#          on the server are removed here too. (Deleted files are kept by the No Deletes
+#          copies on Cachebackup and Disk10.) Keeps this drive from filling up.
+#  To:     NTFS-Backup (readable on Windows), folder Appdata/monthly/
+#  When:   monthly (the 1st)
+#          A month-old set beside the daily and weekly ones.
+#
+#  The first run copies all of appdata (about 103 GB); after that only changes.
+#  Part of the Windows-readable rebuild kit on NTFS-Backup (Appdata, Flash, MySQL;
+#  daily, weekly and monthly). Replaces "Backup Key Items to NTFS".
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/mnt/cache/appdata/"
+DEST="/mnt/disks/NTFS-Backup/Appdata/monthly/"
+
+# Same files skipped as the other appdata copies: Plex's temporary and dated database files.
+OPTS=(
+  --exclude='*.sock'
+  --exclude='*.pre-vacuum*'
+  --exclude='com.plexapp.plugins.library.db-20*'
+  --exclude='com.plexapp.plugins.library.blobs.db-20*'
+  --exclude='com.plexapp.plugins.library.db-wal'
+  --exclude='com.plexapp.plugins.library.db-shm'
+  --exclude='com.plexapp.plugins.library.blobs.db-wal'
+  --exclude='com.plexapp.plugins.library.blobs.db-shm'
+)
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "appdata-mirror-ntfsbackup-monthly" "Appdata - Exact Mirror - NTFS-Backup - Monthly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disks/NTFS-Backup"
+
+backup_mirror_ntfs "Appdata" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish

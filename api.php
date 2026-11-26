@@ -3,13 +3,32 @@
  * Backup Check - status endpoint for the page.
  *   GET                         -> the cached status (rebuilt first if older than 20 minutes)
  *   GET ?files=<job>&run=<id>   -> the files one backup run added, changed or removed (read-only)
+ *   GET ?summary=view           -> the latest daily summary file, as a web page
  *   POST action=refresh         -> rebuild now, including the slow probes of USB/array paths
- * unRAID checks csrf_token on every POST to the webGUI, so refresh is CSRF-protected.
+ *   POST action=summary         -> rebuild the status and save today's summary file now
+ * unRAID checks csrf_token on every POST to the webGUI, so the POST actions are CSRF-protected.
  */
-require_once __DIR__ . '/include/collect.php';
+require_once __DIR__ . '/include/summary.php';
+
+header('Cache-Control: no-store');
+
+// ---- the daily summary, shown as a page -------------------------------------------------------
+if (($_GET['summary'] ?? '') === 'view') {
+    $f = BC_SUMMARY_DIR . '/' . BC_SUMMARY_LATEST;
+    if (!is_file($f)) {
+        $doc = bc_collect(false, true);
+        if (!isset($doc['error'])) bc_write_status($doc);
+        bc_summary_write($doc);
+    }
+    if (!is_file($f)) { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); echo 'No summary has been saved yet.'; exit; }
+    header('Content-Type: text/html; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'");
+    readfile($f);
+    exit;
+}
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
 
 // ---- one run's file list -----------------------------------------------------------------
 if (isset($_GET['files'])) {
@@ -45,15 +64,19 @@ if (isset($_GET['files'])) {
     exit;
 }
 
-// ---- the status document -------------------------------------------------------------------
+// ---- the status document (with the summary file's location and date) ------------------------
+$post    = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+$action  = $post ? ($_POST['action'] ?? '') : '';
 $file    = bc_state_dir() . '/status.json';
-$refresh = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'refresh';
 $stale   = !is_readable($file) || (time() - (int)@filemtime($file)) > 20 * 60;
 
-if ($refresh || $stale) {
-    $doc = bc_collect($refresh, true);
+if ($action === 'refresh' || $action === 'summary' || $stale) {
+    $doc = bc_collect($action === 'refresh', true);
     if (!isset($doc['error'])) bc_write_status($doc);
-    echo json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    exit;
+    $info = $action === 'summary' ? bc_summary_write($doc) : bc_summary_info();
+} else {
+    $doc = json_decode((string)@file_get_contents($file), true) ?: ['error' => 'Could not read the status file'];
+    $info = bc_summary_info();
 }
-readfile($file);
+$doc['summary'] = $info;
+echo json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

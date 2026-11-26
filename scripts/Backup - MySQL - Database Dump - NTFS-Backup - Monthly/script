@@ -1,0 +1,34 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - MySQL - Database Dump - NTFS-Backup - Monthly
+#
+#  What:   every MySQL database, as one plain-text .sql file (all-databases-daily.sql).
+#          It is the dump made each night at 03:15 by "Backup - MySQL - Database Dump -
+#          Cachebackup", copied here - not dumped again, so this script holds no password.
+#  Type:   Database Dump (a copy of the newest one). The file is replaced each run.
+#  To:     NTFS-Backup (readable on Windows), folder MySQL/monthly/
+#  When:   monthly (the 1st)
+#          A month-old set beside the daily and weekly ones.
+#
+#  Warns if the newest dump is more than 2 days old.
+#  Part of the Windows-readable rebuild kit on NTFS-Backup (Appdata, Flash, MySQL;
+#  daily, weekly and monthly). Replaces "Backup Key Items to NTFS".
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+DIR="/mnt/cachebackup/backups/mysql/daily/"
+FILE="all-databases-daily.sql"
+DEST="/mnt/disks/NTFS-Backup/MySQL/monthly/"
+
+OPTS=(--include="/$FILE" --exclude='*')
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "mysql-dump-ntfsbackup-monthly" "MySQL - Database Dump - NTFS-Backup - Monthly"
+backup_need_mounted "/mnt/disks/NTFS-Backup"
+[ -s "$DIR$FILE" ] || backup_abort "No MySQL dump found at $DIR$FILE - check \"Backup - MySQL - Database Dump - Cachebackup\""
+if [ -n "$(find "$DIR$FILE" -mmin +2880)" ]; then
+  backup_warn "The MySQL dump is more than 2 days old - check \"Backup - MySQL - Database Dump - Cachebackup\""
+fi
+
+backup_nodeletes_ntfs "MySQL" "$DIR" "$DEST" "${OPTS[@]}"
+backup_finish

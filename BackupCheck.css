@@ -266,6 +266,19 @@
 .bc-fgroup li .bc-chip { font-size: 10.5px; padding: 1px 7px; flex: none; }
 .bc-fgroup li .p { font-family: var(--mono); color: var(--text); word-break: break-all; }
 
+/* daily summary file */
+.bc-sum { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.bc-sum-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.bc-sum-icon { width: 42px; height: 42px; flex: none; border-radius: 11px; background: var(--acc-soft); color: var(--acc); display: flex; align-items: center; justify-content: center; }
+.bc-sum-btns { display: flex; gap: 8px; flex: none; }
+.bc-root .bc-sum-btns .bc-btn[disabled] { opacity: .6; cursor: default; }
+.bc-sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding-top: 12px; border-top: 1px solid var(--line2); font-size: 13px; }
+.bc-sum-grid .bc-label { margin-bottom: 4px; }
+.bc-root .bc-sum-grid .bc-linkbtn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; vertical-align: middle; }
+.bc-sum-copies { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line2); font-size: 13px; }
+.bc-sum-copy { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 900px) { .bc-sum-grid { grid-template-columns: 1fr; } }
+
 @media (max-width: 640px) {
   .bc-run { grid-template-columns: 13px minmax(0, 1fr) auto; }
   .bc-run .st, .bc-run .dur, .bc-run .det { grid-column: 2 / 3; }

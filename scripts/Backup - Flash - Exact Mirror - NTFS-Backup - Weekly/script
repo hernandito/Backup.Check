@@ -1,0 +1,31 @@
+#!/bin/bash
+# =============================================================================
+#  Backup - Flash - Exact Mirror - NTFS-Backup - Weekly
+#
+#  What:   the flash drive (/boot): the unRAID config, plugins, User Scripts and Docker templates
+#  Type:   Exact Mirror - the backup becomes an exact copy of the source, so files deleted
+#          on the server are removed here too. (Deleted files are kept by the No Deletes
+#          copies on Cachebackup and Disk10.) Keeps this drive from filling up.
+#  To:     NTFS-Backup (readable on Windows), folder Flash/weekly/
+#  When:   weekly (Sunday)
+#          A week-old set beside the daily one: a way back if something goes
+#          wrong and isn't noticed for a few days.
+#
+#  The first run copies the whole flash drive (about 4 GB); after that only changes.
+#  Part of the Windows-readable rebuild kit on NTFS-Backup (Appdata, Flash, MySQL;
+#  daily, weekly and monthly). Replaces "Backup Key Items to NTFS".
+# =============================================================================
+source "${BACKUP_LIB:-/boot/config/backup-scripts/backup-lib.sh}" || { echo "Backup library missing"; exit 1; }
+
+SOURCE="/boot/"
+DEST="/mnt/disks/NTFS-Backup/Flash/weekly/"
+
+OPTS=()
+[ "$BACKUP_DRY_RUN" = 1 ] && OPTS+=(--dry-run)
+
+backup_start "flash-mirror-ntfsbackup-weekly" "Flash - Exact Mirror - NTFS-Backup - Weekly"
+backup_need_source  "$SOURCE"
+backup_need_mounted "/mnt/disks/NTFS-Backup"
+
+backup_mirror_ntfs "Flash" "$SOURCE" "$DEST" "${OPTS[@]}"
+backup_finish

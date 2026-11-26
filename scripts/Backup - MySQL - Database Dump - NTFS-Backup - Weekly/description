@@ -1,0 +1,1 @@
+Weekly copy to NTFS-Backup of every database as one plain-text .sql file a Windows PC can open (a copy of the nightly dump; no password here).

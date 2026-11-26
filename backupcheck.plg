@@ -2,7 +2,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name "backupcheck">
 <!ENTITY author "hernandito">
-<!ENTITY version "2026.11.20">
+<!ENTITY version "2026.11.26">
 <!ENTITY github "hernandito/Backup.Check">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
@@ -19,6 +19,13 @@
         min="6.12.0">
 
 <CHANGES>
+###2026.11.26
+- New: a daily summary file. Every morning (09:15) a one-page report of every backup is saved on the flash drive, in config\plugins\backupcheck\summary\Backup Summary - latest.html, with a dated copy for each of the last 14 days.
+- The same files are also saved in a "Backup Summary" folder on each backup drive listed in the catalog ("summary": {"copies": [...]}), so a copy survives even if the flash drive fails. A drive that isn't mounted is skipped.
+- The summary is a single, self-contained web page (no internet, scripts or other files needed): double-click it on any Windows PC to read it, even when the server is down. Print it to PDF from the browser if you want one.
+- The Overview shows where the file is, when it was last saved, and has View and Save now buttons.
+- Catalog: the NTFS-Backup rebuild kit is now separate Appdata, Flash and MySQL jobs (daily, weekly, monthly), and Nextcloud to NTFS-Backup runs daily.
+
 ###2026.11.20a
 - Cleanup Description. Made brief.
 
@@ -39,14 +46,15 @@
 -->
 <FILE Name="&cache;/BackupCheck.page"><URL>&src;/BackupCheck.page</URL><MD5>bbf13dfd33e51c19351085ca684c1c1b</MD5></FILE>
 <FILE Name="&cache;/BackupCheck.php"><URL>&src;/BackupCheck.php</URL><MD5>96175759859d02692a568a9ad33818d1</MD5></FILE>
-<FILE Name="&cache;/BackupCheck.css"><URL>&src;/BackupCheck.css</URL><MD5>ba3ceb1a8519ae3ff83aa2c4130491b1</MD5></FILE>
-<FILE Name="&cache;/BackupCheck.js"><URL>&src;/BackupCheck.js</URL><MD5>ae9e0a5fc763c0c870c149dea3850792</MD5></FILE>
-<FILE Name="&cache;/api.php"><URL>&src;/api.php</URL><MD5>04cbb757b1da293bf872a8e97bd329ee</MD5></FILE>
+<FILE Name="&cache;/BackupCheck.css"><URL>&src;/BackupCheck.css</URL><MD5>519a2d903592389a5e846cdc4ceaaccc</MD5></FILE>
+<FILE Name="&cache;/BackupCheck.js"><URL>&src;/BackupCheck.js</URL><MD5>9abe5fb9eaec988b56883d12d35c46ab</MD5></FILE>
+<FILE Name="&cache;/api.php"><URL>&src;/api.php</URL><MD5>8ebf095dd384bc93f096bdf0ea85dee5</MD5></FILE>
 <FILE Name="&cache;/include/collect.php"><URL>&src;/include/collect.php</URL><MD5>0dee521df55ba61c4b4b54651812d75d</MD5></FILE>
+<FILE Name="&cache;/include/summary.php"><URL>&src;/include/summary.php</URL><MD5>bcb623c8b03d14261a816703bbc71e4b</MD5></FILE>
 <FILE Name="&cache;/include/BCCron.php"><URL>&src;/include/BCCron.php</URL><MD5>84dde8fcead281f288e86091b831370d</MD5></FILE>
-<FILE Name="&cache;/catalog.default.json"><URL>&src;/catalog.default.json</URL><MD5>a1bcac07edafe6dc77453273eaec4d68</MD5></FILE>
+<FILE Name="&cache;/catalog.default.json"><URL>&src;/catalog.default.json</URL><MD5>2489a32c700fbcd0ea1e8f9d973ebdbd</MD5></FILE>
 <FILE Name="&cache;/backup-status.sh"><URL>&src;/backup-status.sh</URL><MD5>a5c0a757390675df991b18c888936391</MD5></FILE>
-<FILE Name="&cache;/README.md"><URL>&src;/description.txt</URL><MD5>ec54859f39aee9b5dd92a23ab1b3f8d0</MD5></FILE>
+<FILE Name="&cache;/README.md"><URL>&src;/description.txt</URL><MD5>ec744386ec27a57f0b599eed7b542332</MD5></FILE>
 <FILE Name="&cache;/backupcheck.png"><URL>&src;/backupcheck.png</URL><MD5>bf6c0a7e2f4824a288d4b845cb42471f</MD5></FILE>
 
 <FILE Run="/bin/bash">
@@ -80,6 +88,9 @@ chmod -R 755 "$PLUGDIR"
 # Refresh the status every 30 minutes (reads only; USB/array paths at most every 6 hours)
 echo "# Backup Check: refresh backup status" > "$CONF/$NAME.cron"
 echo "*/30 * * * * /usr/bin/php $PLUGDIR/include/collect.php &> /dev/null" >> "$CONF/$NAME.cron"
+# Save the daily summary file on the flash drive (CONF/summary), after the night's backups
+echo "# Backup Check: save the daily summary file on the flash drive" >> "$CONF/$NAME.cron"
+echo "15 9 * * * /usr/bin/php $PLUGDIR/include/summary.php &> /dev/null" >> "$CONF/$NAME.cron"
 /usr/local/sbin/update_cron
 
 # Build the first status now, in the background
@@ -111,8 +122,9 @@ for d in "$CONF"/20[0-9][0-9].[0-9][0-9].[0-9][0-9]*/; do [ -d "$d" ] && rm -rf 
 echo ""
 echo "----------------------------------------------------------------------------"
 echo " Backup Check has been uninstalled."
-echo " Your catalog (/boot/config/plugins/backupcheck/catalog.json) and the status"
-echo " history in the appdata backup-check folder were kept."
+echo " Your catalog (/boot/config/plugins/backupcheck/catalog.json), the saved daily"
+echo " summaries (/boot/config/plugins/backupcheck/summary) and the status history"
+echo " in the appdata backup-check folder were kept."
 echo "----------------------------------------------------------------------------"
 echo ""
 ]]>
